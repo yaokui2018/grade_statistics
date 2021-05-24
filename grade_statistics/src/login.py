@@ -138,7 +138,7 @@ class Ui_MainWindow(object):
         self.lineEdit_2.setPlaceholderText(_translate("MainWindow", "请输入密码"))
         self.pushButton.setText(_translate("MainWindow", "登录"))
         self.label_4.setText(_translate("MainWindow", "2021面向对象-第17组"))
-        self.label_5.setText(_translate("MainWindow", "组员：姚奎、张未秀、问伯竹、王嘉欣、刘旭、李相君、李海啸、刘大伟"))
+        self.label_5.setText(_translate("MainWindow", "组员："))
         # self.label_6.setText(_translate("MainWindow", ""))
 
     def btn_clicked2(self):
