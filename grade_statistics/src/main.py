@@ -4,12 +4,16 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 import qtawesome
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QHeaderView, QTableWidgetItem, QComboBox, \
-    QStyleOptionButton, QStyle, QMessageBox, QAbstractItemView, QFileDialog, QInputDialog, QLineEdit
+    QStyleOptionButton, QStyle, QMessageBox, QAbstractItemView, QFileDialog, QInputDialog, QLineEdit, QMainWindow, \
+    QApplication, QSplitter
 import pandas as pd
 
 import grade_statistics.src.vals.global_var as gl
 from PyQt5.QtCore import Qt, pyqtSignal, QRect, QAbstractTableModel
 
+from grade_statistics.src.AddAdmin import AddAdmin
+from grade_statistics.src.EditAdmin import EditAdmin
+# from grade_statistics.src.login import *
 from grade_statistics.src.vals.sqls import *
 
 from grade_statistics.src.vals.db import *
@@ -377,7 +381,7 @@ class MainUi(QtWidgets.QMainWindow):
         """
         删除数据
         :param ids: 数据库id列表
-        :param flag: 1. 学生 2.班级 3.角色
+        :param flag: 1.学生 2.班级 3.角色 4.班级
         :return:
         """
         global all_header_combobox
@@ -406,8 +410,25 @@ class MainUi(QtWidgets.QMainWindow):
                         self.tableWidget.item(row, 4).setText('0')
                         self.tableWidget.item(row, 5).setText('0')
                         self.tableWidget.item(row, 6).setText('0')
+                    elif flag == gl.FLAG_CLASS:
+                        result = sql_execute(getStudentByClassId(ids[0]))
+                        if len(result) > 0:
+                            QMessageBox.information(self, '失败', "该班级还有学生！请移除学生后再删除该班级。")
+                            return
+                        else:
+                            sql_execute(delClassById(ids[0]))
+                            self.tableWidget.removeRow(row)
+                    elif flag == gl.FLAG_ADMIN:
+                        if ids[0] == 1:
+                            QMessageBox.information(self, '失败', "超管账号不可删除！")
+                            return
+                        else:
+                            sql_execute(delAdminById(ids[0]))
+                            self.tableWidget.removeRow(row)
 
             else:
+                errIds = []
+                i = None
                 for id in ids:
                     # self.tableWidget.removeRow(row)
                     # print(row)
@@ -416,11 +437,34 @@ class MainUi(QtWidgets.QMainWindow):
                         result = sql_execute(delStudentById(id))
                     elif flag == gl.FLAG_GRADE:
                         result = sql_execute(updateGradeByNum(id, '0', '0', '0'))
+                    elif flag == gl.FLAG_CLASS:
+                        result = sql_execute(getStudentByClassId(id))
+                        if len(result) > 0:
+                            errIds.append(id)
+                            continue
+                        else:
+                            sql_execute(delClassById(id))
+                    elif flag == gl.FLAG_ADMIN:
+                        if id == '1':
+                            QMessageBox.information(self, '失败', "超管账号不可删除！")
+                            continue
+                        else:
+                            sql_execute(delAdminById(id))
+                        i = -1
                     # print(result)
                     # self.tableWidget.removeRow(row)
                     # del all_header_combobox[row]
                     # self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-                self.getDataList(flag=flag)
+                if flag == gl.FLAG_CLASS:
+                    if len(errIds) == 0:
+                        QMessageBox.about(self, '操作完成', "成功删除班级%d个。" % (len(ids) - 1))
+                    else:
+                        QMessageBox.information(self, '操作完成',
+                                                "成功删除班级%d个，失败%d个。\n失败班级id：%s\n这些班级内还有学生，无法删除，请移除学生后再进行该操作！"
+                                                % (len(ids) - len(errIds) - 1, len(errIds), str(errIds)))
+                    self.getDataList(flag=flag, i=-1)
+                    return
+                self.getDataList(flag=flag, i=i)
 
     def viewTable(self, id, flag):
         """
@@ -465,6 +509,8 @@ class MainUi(QtWidgets.QMainWindow):
                                               font : 12px  ''')
         if flag == gl.FLAG_CLASS:
             updateBtn.clicked.connect(lambda: self.editClass(id, info))
+        elif flag == gl.FLAG_ADMIN:
+            updateBtn.clicked.connect(lambda: self.editAdmin(id))
         else:
             updateBtn.clicked.connect(lambda: self.editRow(id, flag))
 
@@ -565,6 +611,8 @@ class MainUi(QtWidgets.QMainWindow):
             data_list = sql_execute(getGradeList(classIds, name))
         elif flag == gl.FLAG_CLASS:
             data_list = self.getClassList(name)
+        elif flag == gl.FLAG_ADMIN:
+            data_list = sql_execute(getAdminList(name))
         self.addTableRow(flag, data_list)
 
     def addTableRow(self, flag, dataList):
@@ -583,21 +631,22 @@ class MainUi(QtWidgets.QMainWindow):
         self.tableWidget.setRowCount(len(dataList))
         i = 0
         for data in dataList:
-            checkbox1 = QtWidgets.QCheckBox()
-            # 将所有的复选框都添加到 全局变量 all_header_combobox 中
-            all_header_combobox.append(checkbox1)
-            # 1.实例化一个新布局
-            hLayout = QtWidgets.QFormLayout()
-            # 2.在布局里添加checkBox
-            hLayout.addWidget(checkbox1)
-            # 3.在布局里居中放置checkbox1
-            hLayout.setAlignment(checkbox1, QtCore.Qt.AlignCenter)
-            # 4.实例化一个QWidget（控件）
-            widget = QtWidgets.QWidget()
-            # 5.在QWidget放置布局
-            widget.setLayout(hLayout)
-            # 6.在tableWidget1放置widget
-            self.tableWidget.setCellWidget(i, 0, widget)
+            if not(flag == gl.FLAG_ADMIN and data[0] ==1):
+                checkbox1 = QtWidgets.QCheckBox()
+                # 将所有的复选框都添加到 全局变量 all_header_combobox 中
+                all_header_combobox.append(checkbox1)
+                # 1.实例化一个新布局
+                hLayout = QtWidgets.QFormLayout()
+                # 2.在布局里添加checkBox
+                hLayout.addWidget(checkbox1)
+                # 3.在布局里居中放置checkbox1
+                hLayout.setAlignment(checkbox1, QtCore.Qt.AlignCenter)
+                # 4.实例化一个QWidget（控件）
+                widget = QtWidgets.QWidget()
+                # 5.在QWidget放置布局
+                widget.setLayout(hLayout)
+                # 6.在tableWidget1放置widget
+                self.tableWidget.setCellWidget(i, 0, widget)
             if flag == gl.FLAG_STUDENT:
                 item = QTableWidgetItem(str(data[0]))
                 item.setTextAlignment(QtCore.Qt.AlignCenter)
@@ -673,10 +722,53 @@ class MainUi(QtWidgets.QMainWindow):
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
                 self.tableWidget.setItem(i, 2, item)
                 self.tableWidget.setCellWidget(i, 3, self.buttonForRow(data[0], gl.FLAG_CLASS, info=data[1]))
+            elif flag == gl.FLAG_ADMIN:
+                item = QTableWidgetItem(str(data[0]))
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                item.setFlags(QtCore.Qt.ItemIsEnabled)
+                self.tableWidget.setItem(i, 1, item)
+                item = QTableWidgetItem()
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                item.setText(str(data[1]))
+                item.setFlags(QtCore.Qt.ItemIsEnabled)
+                self.tableWidget.setItem(i, 2, item)
+                item = QTableWidgetItem()
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                item.setText(str(data[3]))
+                item.setFlags(QtCore.Qt.ItemIsEnabled)
+                self.tableWidget.setItem(i, 3, item)
+                item = QTableWidgetItem()
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                try:
+                    class_dict = {}
+                    all_class = self.getClassList()
+                    for class_ in all_class:
+                        # 添加班级字典
+                        class_dict[str(class_[0])] = class_[1]
+                    classs = 'All'
+                    if data[4] == '':
+                        classs = '无'
+                    elif data[4] != '0':
+                        data4 = data[4].split(',')
+                        classs = "/".join(class_dict[d] for d in data4)
+                except Exception as e:
+                    classs = 'err: 数据有误！'
+                item.setText(classs)
+                item.setFlags(QtCore.Qt.ItemIsEnabled)
+                self.tableWidget.setItem(i, 4, item)
+                # 超管
+                if data[0] == 1:
+                    item = QTableWidgetItem()
+                    item.setTextAlignment(QtCore.Qt.AlignCenter)
+                    item.setText('无权限')
+                    item.setFlags(QtCore.Qt.ItemIsEnabled)
+                    self.tableWidget.setItem(i, 5, item)
+                else:
+                    self.tableWidget.setCellWidget(i, 5, self.buttonForRow(data[0], gl.FLAG_ADMIN))
             i += 1
 
-    def getClassList(self,name=''):
-        return sql_execute(getClassList(gl.gl_user[4],name))
+    def getClassList(self, name=''):
+        return sql_execute(getClassList(gl.gl_user[4], name))
 
     def setLeftMenu(self, button):
         """
@@ -729,6 +821,80 @@ class MainUi(QtWidgets.QMainWindow):
                 self.getDataList(gl.FLAG_CLASS, i=-1)
             except Exception as e:
                 QMessageBox.critical(self, '失败', '编辑班级失败：\n' + e)
+
+    def logOut(self,tips=False):
+        """
+        退出登录
+        :param tips: 是否显示提示框
+        :return:
+        """
+        if tips:
+            reply = QMessageBox.question(self, '退出登录', '确定要退出登录吗？', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply != QMessageBox.Yes:
+                return
+        gl.gl_user = ()
+        self.aw = gl.LOGIN_WINDOW  # 创建主窗体对象，实例化Ui_MainWindow
+        self.w = QMainWindow()  # 实例化QMainWindow类
+        self.aw.setupUi(self.w)  # 主窗体对象调用setupUi方法，对QMainWindow对象进行设置
+        self.w.show()  # 显示主窗体
+        self.hide()
+
+    def editUsername(self):
+        """
+        修改用户名
+        :return:
+        """
+        reply = QMessageBox.question(self, '修改用户名', '修改用户名后，需要重新登录。是否继续？', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            username = self.input_name.text()
+            sql_execute(updateUsernameById(gl.gl_user[0],username))
+            QMessageBox.about(self, '成功', '用户名修改成功！请重新登录。')
+            self.logOut(False)
+            # self.aw = Ui_MainWindow()  # 创建主窗体对象，实例化Ui_MainWindow
+            # self.w = QMainWindow()  # 实例化QMainWindow类
+            # self.aw.setupUi(self.w)  # 主窗体对象调用setupUi方法，对QMainWindow对象进行设置
+            # self.w.show()  # 显示主窗体
+
+    def modifyPassw(self):
+        """
+        修改密码
+        :return:
+        """
+        pass0 = self.input_pass0.text()
+        pass1 = self.input_pass1.text()
+        pass2 = self.input_pass2.text()
+        if pass1 != pass2:
+            QMessageBox.information(self, '错误', '两次密码输入不一致。')
+            return
+        else:
+            if gl.gl_user[2] != md5(pass0):
+                QMessageBox.information(self, '错误', '原密码不正确！')
+                return
+            else:
+                sql_execute(resetAdminPasswById(gl.gl_user[0],pass1))
+                QMessageBox.about(self, '成功', '密码修改成功！请重新登录。')
+                self.logOut(False)
+
+
+    def editAdmin(self, id):
+        """
+        编辑角色
+        :param id: 角色id
+        :return:
+        """
+        self.aw = EditAdmin()  # 创建主窗体对象，实例化Ui_MainWindow
+        self.w = QMainWindow()  # 实例化QMainWindow类
+        self.aw.setupUi(self.w,id)  # 主窗体对象调用setupUi方法，对QMainWindow对象进行设置
+        self.w.show()  # 显示主窗体
+    def addAdmin(self):
+        """
+        新增角色
+        :return:
+        """
+        self.aw = AddAdmin()  # 创建主窗体对象，实例化Ui_MainWindow
+        self.w = QMainWindow()  # 实例化QMainWindow类
+        self.aw.setupUi(self.w)  # 主窗体对象调用setupUi方法，对QMainWindow对象进行设置
+        self.w.show()  # 显示主窗体
 
     # 学生管理
     def student_management(self):
@@ -1153,7 +1319,7 @@ class MainUi(QtWidgets.QMainWindow):
         self.pushButton_2 = QtWidgets.QPushButton(self.widget)
         self.pushButton_2.setObjectName("pushButton_2")
         self.horizontalLayout.addWidget(self.pushButton_2)
-        self.pushButton_2.clicked.connect(lambda: self.getDataList(gl.FLAG_CLASS,i=-1))
+        self.pushButton_2.clicked.connect(lambda: self.getDataList(gl.FLAG_CLASS, i=-1))
         self.pushButton_2.setStyleSheet(''' text-align : center;
                                               background-color : #03a9f4;
                                               height : 30px;
@@ -1170,7 +1336,7 @@ class MainUi(QtWidgets.QMainWindow):
         self.pushButton_del = QtWidgets.QPushButton(self.widget)
         self.pushButton_del.setObjectName("pushButton_del")
         self.horizontalLayout.addWidget(self.pushButton_del)
-        self.pushButton_del.clicked.connect(lambda: self.batchDelete(gl.FLAG_GRADE))
+        self.pushButton_del.clicked.connect(lambda: self.batchDelete(gl.FLAG_CLASS))
         self.pushButton_del.setStyleSheet(''' text-align : center;
                                               background-color : #f44336;
                                               height : 30px;
@@ -1226,6 +1392,303 @@ class MainUi(QtWidgets.QMainWindow):
         self.tableWidget.verticalHeader().setDefaultSectionSize(32)
 
         self.getDataList(gl.FLAG_CLASS, i=-1)
+
+        return self.right_widget
+
+    # 角色管理
+    def admin_management(self):
+        global all_class, class_dict, class_dict2
+        class_dict = {}
+        class_dict2 = {}
+        if self.right_widget:
+            self.main_layout.removeWidget(self.right_widget)  # 移除已有右侧组件
+        self.setWindowTitle('角色管理-小学生成绩管理系统')
+        self.setLeftMenu(self.left_button_4)
+        self.right_widget = QtWidgets.QWidget()  # 创建右侧部件
+        self.right_widget.setObjectName('right_widget')
+        self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.verticalLayout.setObjectName("verticalLayout")
+
+        self.right_layout = self.verticalLayout
+        self.right_widget.setLayout(self.right_layout)  # 设置右侧部件布局为网格
+
+        self.main_layout.addWidget(self.right_widget, 0, 2, 12, 10)  # 右侧部件在第0行第3列，占8行9列
+
+        self.widget = QtWidgets.QWidget()
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.widget)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        # 新增按钮
+        self.pushButton_3 = QtWidgets.QPushButton(self.widget)
+        self.pushButton_3.setObjectName("pushButton")
+        self.horizontalLayout.addWidget(self.pushButton_3)
+        self.pushButton_3.clicked.connect(lambda: self.addAdmin())
+        self.pushButton_3.setStyleSheet(''' text-align : center;
+                                                              background-color : #009688;
+                                                              height : 30px;
+                                                              width: 80px;
+                                                              border-style: outset;
+                                                              border-radius: 5px;
+                                                              color: #fff;
+                                                              font : 12px  ''')
+        self.label_2 = QtWidgets.QLabel(self.widget)
+        self.label_2.setObjectName("label_2")
+        self.horizontalLayout.addWidget(self.label_2)
+        # 姓名输入框
+        self.input_name = QtWidgets.QLineEdit(self.widget)
+        self.input_name.setObjectName("input_name")
+        self.horizontalLayout.addWidget(self.input_name)
+        self.input_name.setStyleSheet(''' height : 30px;
+                                              border-style: outset;
+                                              padding-left: 5px;
+                                              border: 1px solid #ccc;
+                                              border-radius: 5px;
+                                              font : 12px  ''')
+        # 查询按钮
+        self.pushButton_2 = QtWidgets.QPushButton(self.widget)
+        self.pushButton_2.setObjectName("pushButton_2")
+        self.horizontalLayout.addWidget(self.pushButton_2)
+        self.pushButton_2.clicked.connect(lambda: self.getDataList(gl.FLAG_ADMIN, i=-1))
+        self.pushButton_2.setStyleSheet(''' text-align : center;
+                                              background-color : #03a9f4;
+                                              height : 30px;
+                                              width: 50px;
+                                              border-style: outset;
+                                              border-radius: 5px;
+                                              color: #fff;
+                                              font : 12px  ''')
+
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem)
+        # 批量删除按钮
+        self.pushButton_del = QtWidgets.QPushButton(self.widget)
+        self.pushButton_del.setObjectName("pushButton_del")
+        self.horizontalLayout.addWidget(self.pushButton_del)
+        self.pushButton_del.clicked.connect(lambda: self.batchDelete(gl.FLAG_ADMIN))
+        self.pushButton_del.setStyleSheet(''' text-align : center;
+                                              background-color : #f44336;
+                                              height : 30px;
+                                              width: 80px;
+                                              border-style: outset;
+                                              border-radius: 5px;
+                                              color: #fff;
+                                              font : 12px  ''')
+        self.verticalLayout.addWidget(self.widget)
+        self.tableWidget = QtWidgets.QTableWidget()
+        # self.tableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tableWidget.setObjectName("tableWidget")
+        self.tableWidget.setColumnCount(6)
+
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(1, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(2, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(3, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(4, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(5, item)
+        self.verticalLayout.addWidget(self.tableWidget)
+
+        _translate = QtCore.QCoreApplication.translate
+        self.pushButton_3.setText(_translate("Form", "新增角色"))
+        self.label_2.setText(_translate("Form", "用户名"))
+        self.pushButton_2.setText(_translate("Form", "查询"))
+        self.pushButton_del.setText(_translate("Form", "批量删除"))
+        # item = self.tableWidget.horizontalHeaderItem(0)
+        # item.setText(_translate("Form", "0"))
+        item = self.tableWidget.horizontalHeaderItem(1)
+        item.setText(_translate("Form", "ID"))
+        item = self.tableWidget.horizontalHeaderItem(2)
+        item.setText(_translate("Form", "用户名"))
+        item = self.tableWidget.horizontalHeaderItem(3)
+        item.setText(_translate("Form", "备注"))
+        item = self.tableWidget.horizontalHeaderItem(4)
+        item.setText(_translate("Form", "可管理班级"))
+        item = self.tableWidget.horizontalHeaderItem(5)
+        item.setText(_translate("Form", "操作"))
+
+        header = CheckBoxHeader()  # 实例化自定义表头
+        self.tableWidget.setHorizontalHeader(header)  # 设置表头
+        header.select_all_clicked.connect(header.change_state)  # 行表头复选框单击信号与槽
+        self.tableWidget.setColumnWidth(0, 50)
+        # self.tableWidget.setRowHeight(40)
+        self.tableWidget.setColumnWidth(1, 70)
+        self.tableWidget.setColumnWidth(2, 120)
+        self.tableWidget.setColumnWidth(3, 160)
+        self.tableWidget.setColumnWidth(4, 240)
+
+        # 列宽自动分配
+        # self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tableWidget.verticalHeader().setDefaultSectionSize(32)
+
+        self.getDataList(gl.FLAG_ADMIN, i=-1)
+
+        return self.right_widget
+
+    # 修改资料
+    def change_info(self):
+        if self.right_widget:
+            self.main_layout.removeWidget(self.right_widget)  # 移除已有右侧组件
+        self.setWindowTitle('修改资料-小学生成绩管理系统')
+        self.setLeftMenu(self.left_button_8)
+        self.right_widget = QtWidgets.QWidget()  # 创建右侧部件
+        self.right_widget.setObjectName('right_widget')
+        self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.right_widget.setStyleSheet(''' background-image : url('bg.png');
+                                            background-position:center;
+                                            background-repeat:no-repeat;''')
+
+        self.right_layout = self.verticalLayout
+        self.right_widget.setLayout(self.right_layout)  # 设置右侧部件布局为网格
+
+        self.main_layout.addWidget(self.right_widget, 0, 2, 12, 10)  # 右侧部件在第0行第3列，占8行9列
+
+        self.widget = QtWidgets.QWidget()
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.widget)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+        self.label_2 = QtWidgets.QLabel(self.widget)
+        self.label_2.setObjectName("label_2")
+        self.horizontalLayout.addItem(spacerItem)
+        self.horizontalLayout.addWidget(self.label_2)
+        # 姓名输入框
+        self.input_name = QtWidgets.QLineEdit(self.widget)
+        self.input_name.setObjectName("input_name")
+        self.input_name.setText(gl.gl_user[1])
+        self.horizontalLayout.addWidget(self.input_name)
+        self.input_name.setStyleSheet(''' height : 30px;
+                                              border-style: outset;
+                                              padding-left: 5px;
+                                              border: 1px solid #ccc;
+                                              border-radius: 5px;
+                                              font : 12px  ''')
+
+
+        self.widget2 = QtWidgets.QWidget()
+        self.horizontalLayout2 = QtWidgets.QHBoxLayout(self.widget2)
+
+        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout2.addItem(spacerItem2)
+        self.label_pass0 = QtWidgets.QLabel(self.widget2)
+        self.label_pass0.setText('  原密码')
+        self.horizontalLayout2.addWidget(self.label_pass0)
+        # 原密码输入框
+        self.input_pass0 = QtWidgets.QLineEdit(self.widget2)
+        self.input_pass0.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.input_pass0.setPlaceholderText('请输入原密码')
+        self.horizontalLayout2.addWidget(self.input_pass0)
+        self.input_pass0.setStyleSheet(''' height : 30px;
+                                              border-style: outset;
+                                              padding-left: 5px;
+                                              border: 1px solid #ccc;
+                                              border-radius: 5px;
+                                              font : 12px  ''')
+
+        self.widget3 = QtWidgets.QWidget()
+        self.horizontalLayout3 = QtWidgets.QHBoxLayout(self.widget3)
+
+        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout3.addItem(spacerItem3)
+        self.label_pass1 = QtWidgets.QLabel(self.widget3)
+        self.label_pass1.setText('  新密码')
+        # 新密码输入框
+        self.input_pass1 = QtWidgets.QLineEdit(self.widget3)
+        self.input_pass1.setObjectName("input_pass1")
+        self.input_pass1.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.input_pass1.setPlaceholderText('请输入新密码')
+        self.horizontalLayout3.addWidget(self.label_pass1)
+        self.horizontalLayout3.addWidget(self.input_pass1)
+        self.input_pass1.setStyleSheet(''' height : 30px;
+                                              border-style: outset;
+                                              padding-left: 5px;
+                                              border: 1px solid #ccc;
+                                              border-radius: 5px;
+                                              font : 12px  ''')
+
+        self.widget4 = QtWidgets.QWidget()
+        self.horizontalLayout4 = QtWidgets.QHBoxLayout(self.widget4)
+        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout4.addItem(spacerItem4)
+        self.label_pass2 = QtWidgets.QLabel(self.widget4)
+        self.label_pass2.setText('重复密码')
+        # 重复密码输入框
+        self.input_pass2 = QtWidgets.QLineEdit(self.widget4)
+        self.input_pass2.setObjectName("input_pass2")
+        self.input_pass2.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.input_pass2.setPlaceholderText('请重复新密码')
+        self.horizontalLayout4.addWidget(self.label_pass2)
+        self.horizontalLayout4.addWidget(self.input_pass2)
+        self.input_pass2.setStyleSheet(''' height : 30px;
+                                              border-style: outset;
+                                              padding-left: 5px;
+                                              border: 1px solid #ccc;
+                                              border-radius: 5px;
+                                              font : 12px  ''')
+        self.widget5 = QtWidgets.QWidget()
+        self.horizontalLayout5 = QtWidgets.QHBoxLayout(self.widget5)
+        spacerItem5 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout5.addItem(spacerItem5)
+        # 提交按钮
+        self.pushButton_3 = QtWidgets.QPushButton(self.widget5)
+        self.pushButton_3.setObjectName("pushButton")
+        self.horizontalLayout5.addWidget(self.pushButton_3)
+        self.pushButton_3.clicked.connect(lambda: self.modifyPassw())
+        self.pushButton_3.setStyleSheet(''' text-align : center;
+                                                                      background-color : #009688;
+                                                                      height : 30px;
+                                                                      width: 80px;
+                                                                      border-style: outset;
+                                                                      border-radius: 5px;
+                                                                      color: #fff;
+                                                                      font : 12px  ''')
+        # 查询按钮
+        self.pushButton_2 = QtWidgets.QPushButton(self.widget)
+        self.pushButton_2.setObjectName("pushButton_2")
+        self.horizontalLayout.addWidget(self.pushButton_2)
+        self.pushButton_2.clicked.connect(lambda: self.editUsername())
+        self.pushButton_2.setStyleSheet(''' text-align : center;
+                                              background-color : #03a9f4;
+                                              height : 30px;
+                                              width: 50px;
+                                              border-style: outset;
+                                              border-radius: 5px;
+                                              color: #fff;
+                                              font : 12px  ''')
+
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout2.addItem(spacerItem)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout3.addItem(spacerItem)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout4.addItem(spacerItem)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout5.addItem(spacerItem)
+
+        spacerItem = QtWidgets.QSpacerItem(40, 100, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.verticalLayout.addItem(spacerItem)
+        self.verticalLayout.addWidget(self.widget)
+        spacerItem = QtWidgets.QSpacerItem(40, 300, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.verticalLayout.addItem(spacerItem)
+        self.verticalLayout.addWidget(self.widget2)
+        self.verticalLayout.addWidget(self.widget3)
+        self.verticalLayout.addWidget(self.widget4)
+        self.verticalLayout.addWidget(self.widget5)
+
+        spacerItem = QtWidgets.QSpacerItem(40, 200, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.verticalLayout.addItem(spacerItem)
+
+        _translate = QtCore.QCoreApplication.translate
+        self.pushButton_3.setText(_translate("Form", "修改密码"))
+        self.label_2.setText(_translate("Form", "用户名"))
+        self.pushButton_2.setText(_translate("Form", "修改"))
 
         return self.right_widget
 
@@ -1369,8 +1832,10 @@ class MainUi(QtWidgets.QMainWindow):
         # self.left_button_7.setObjectName('left_button')
         self.left_button_8 = QtWidgets.QPushButton(qtawesome.icon('fa.pencil-square-o', color='white'), "修改资料")
         self.left_button_8.setObjectName('left_button')
+        self.left_button_8.clicked.connect(lambda: self.setRightWidget(gl.FLAG_INFO))
         self.left_button_9 = QtWidgets.QPushButton(qtawesome.icon('fa.sign-out', color='white'), "退出登录")
         self.left_button_9.setObjectName('left_button')
+        self.left_button_9.clicked.connect(lambda: self.logOut(True))
         self.left_xxx = QtWidgets.QPushButton(" ")
         #
         # self.left_layout.addWidget(self.left_mini, 0, 0, 1, 1)
@@ -1438,6 +1903,10 @@ class MainUi(QtWidgets.QMainWindow):
             self.right_widget = self.grade_management()
         elif flag == gl.FLAG_CLASS:
             self.right_widget = self.class_management()
+        elif flag == gl.FLAG_ADMIN:
+            self.right_widget = self.admin_management()
+        elif flag == gl.FLAG_INFO:
+            self.right_widget = self.change_info()
 
 
 def main():

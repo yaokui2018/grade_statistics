@@ -123,14 +123,14 @@ class Ui_MainWindow(object):
                     #pushButton:hover{background-color:#2c8adf;}
                 ''')
 
-        self.pushButton.clicked.connect(self.btn_clicked)
+        self.pushButton.clicked.connect(lambda: self.btn_clicked(MainWindow))
         self.lineEdit.textEdited.connect(self.btn_clicked2)
         self.lineEdit_2.textEdited.connect(self.btn_clicked2)
-        self.lineEdit_2.returnPressed.connect(self.btn_clicked)
+        self.lineEdit_2.returnPressed.connect(lambda: self.btn_clicked(MainWindow))
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "管理员登录 - 小学生成绩管理系统"))
         self.label.setText(_translate("MainWindow", "小学生成绩管理系统"))
         self.lineEdit.setPlaceholderText(_translate("MainWindow", "请输入用户名"))
         self.label_2.setText(_translate("MainWindow", "用户名："))
@@ -144,7 +144,7 @@ class Ui_MainWindow(object):
     def btn_clicked2(self):
         self.label_6.setText("")
 
-    def btn_clicked(self):
+    def btn_clicked(self,MainWindow):
         """
         管理员登录
         :return:
@@ -163,7 +163,8 @@ class Ui_MainWindow(object):
             gl.gl_user = result[0]
             self.main = MainUi()
             self.main.show()
-            w.hide()
+            gl.LOGIN_WINDOW = aw
+            MainWindow.hide()
             self.main.setWindowTitle('小学生成绩管理系统')
         print(result)
 

@@ -196,96 +196,208 @@ class Ui_Form(object):  # 图形界面类
 #     ta = TableDemo()
 #     sys.exit(app.exec_())
 
+# import sys
+# from PyQt5.QtWidgets import QApplication
+# from PyQt5.QtWidgets import QWidget
+# from PyQt5.QtWidgets import QTableWidget
+# from PyQt5.QtWidgets import QTableWidgetItem
+# from PyQt5.QtWidgets import QAbstractItemView
+# from PyQt5.QtWidgets import QPushButton
+# from qtpy.QtCore import Qt
+#
+#
+# class testWindow(QWidget):
+#     def __init__(self):
+#         super().__init__()
+#
+#         self.initUI()
+#
+#     def initUI(self):
+#
+#         self.table = QTableWidget(self)
+#         self.table.move(20, 20)
+#         self.table.setColumnCount(3)
+#         self.table.setFixedHeight(300)
+#         self.table.setFixedWidth(500)
+#         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置表格的选取方式是行选取
+#         self.table.setSelectionMode(QAbstractItemView.SingleSelection)  # 设置选取方式为单个选取
+#         self.table.setHorizontalHeaderLabels(["标记ID", "标记名称", "标记初始坐标"])  # 设置行表头
+#         self.table.verticalHeader().setVisible(False)  # 隐藏列表头
+#
+#         self.table_insert()
+#
+#         self.table.itemChanged.connect(self.table_update)
+#
+#         self.delete_button = QPushButton(self)
+#         self.delete_button.move(230, 350)
+#         self.delete_button.setFixedWidth(100)
+#         self.delete_button.setFixedHeight(32)
+#         self.delete_button.clicked.connect(self.table_delete)
+#         self.delete_button.setText("Delete")
+#
+#         self.setGeometry(200, 200, 570, 400)
+#         self.show()
+#
+#     # insert,只是简单插入一个固定数据
+#     def table_insert(self):
+#         row = self.table.rowCount()
+#         self.table.insertRow(row)
+#
+#         item_id = QTableWidgetItem("1")
+#         item_id.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)  # 设置物件的状态为只可被选择（未设置可编辑）
+#
+#         item_name = QTableWidgetItem("door")  # 我们要求它可以修改，所以使用默认的状态即可
+#
+#         item_pos = QTableWidgetItem("(1,2)")
+#         item_pos.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)  # 设置物件的状态为只可被选择
+#
+#         self.table.setItem(row, 0, item_id)
+#         self.table.setItem(row, 1, item_name)
+#         self.table.setItem(row, 2, item_pos)
+#         # 以下可以加入保存数据到数据的操作
+#
+#     # update
+#     def table_update(self):
+#         row_select = self.table.selectedItems()
+#         if len(row_select) == 0:
+#             return
+#         id = row_select[0].text()
+#         new_name = row_select[1].text()
+#         print("id: {}, save_name: {}".format(id, new_name))
+#         # 以下可以加入保存数据到数据的操作
+#         '''
+#         eg. update {table} set name = "new_name" where id = "id"
+#         '''
+#
+#     # delete
+#     def table_delete(self):
+#         row_select = self.table.selectedItems()
+#         if len(row_select) == 0:
+#             return
+#         id = row_select[0].text()
+#         print("id: {}".format(id))
+#
+#         row = row_select[0].row()
+#         self.table.removeRow(row)
+#         # 以下可以加入保存数据到数据的操作
+#         '''
+#         eg. delete from {table} where id = "id"
+#         '''
+#
+#
+# if __name__ == "__main__":
+#     app = QApplication(sys.argv)
+#     main_window = testWindow()
+#     sys.exit(app.exec_())
+
+from PyQt5.QtWidgets import QComboBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QApplication
+from PyQt5.QtCore import pyqtSignal
 import sys
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtWidgets import QTableWidget
-from PyQt5.QtWidgets import QTableWidgetItem
-from PyQt5.QtWidgets import QAbstractItemView
-from PyQt5.QtWidgets import QPushButton
-from qtpy.QtCore import Qt
+
+"""
+1.将show函数改成show0
+2.增加changeitemlist函数
+3.增加信号signa
+"""
 
 
-class testWindow(QWidget):
-    def __init__(self):
-        super().__init__()
+class ComboCheckBox(QComboBox):
+    signa = pyqtSignal(list)
 
-        self.initUI()
+    def __init__(self, items):  # items==[str,str...]
+        super(ComboCheckBox, self).__init__()
+        self.items = items
+        self.items.insert(0, '全部')
 
-    def initUI(self):
+        self.row_num = len(self.items)
+        self.Selectedrow_num = 0
+        self.qCheckBox = []
+        self.qLineEdit = QLineEdit()
+        self.qLineEdit.setReadOnly(True)
+        self.qListWidget = QListWidget()
+        self.addQCheckBox(0)
+        self.qCheckBox[0].stateChanged.connect(self.All)
+        for i in range(1, self.row_num):
+            self.addQCheckBox(i)
+            self.qCheckBox[i].stateChanged.connect(self.show0)
+        self.setModel(self.qListWidget.model())
+        self.setView(self.qListWidget)
+        self.setLineEdit(self.qLineEdit)
+        self.setMaxVisibleItems(100)  # 避免滑条的出现引起滑条偷吃标签的问题
 
-        self.table = QTableWidget(self)
-        self.table.move(20, 20)
-        self.table.setColumnCount(3)
-        self.table.setFixedHeight(300)
-        self.table.setFixedWidth(500)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置表格的选取方式是行选取
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)  # 设置选取方式为单个选取
-        self.table.setHorizontalHeaderLabels(["标记ID", "标记名称", "标记初始坐标"])  # 设置行表头
-        self.table.verticalHeader().setVisible(False)  # 隐藏列表头
+    def addQCheckBox(self, i):
+        self.qCheckBox.append(QCheckBox())
+        qItem = QListWidgetItem(self.qListWidget)
+        self.qCheckBox[i].setText(self.items[i])
+        self.qListWidget.setItemWidget(qItem, self.qCheckBox[i])
 
-        self.table_insert()
+    def Selectlist(self):
+        Outputlist = []
+        for i in range(1, self.row_num):
+            if self.qCheckBox[i].isChecked() == True:
+                Outputlist.append(self.qCheckBox[i].text())
+        self.Selectedrow_num = len(Outputlist)
 
-        self.table.itemChanged.connect(self.table_update)
+        return Outputlist
 
-        self.delete_button = QPushButton(self)
-        self.delete_button.move(230, 350)
-        self.delete_button.setFixedWidth(100)
-        self.delete_button.setFixedHeight(32)
-        self.delete_button.clicked.connect(self.table_delete)
-        self.delete_button.setText("Delete")
+    def show0(self):
+        show0 = ''
+        Outputlist = self.Selectlist()
+        self.signa.emit(Outputlist)
+        self.qLineEdit.setReadOnly(False)
+        self.qLineEdit.clear()
+        for i in Outputlist:
+            show0 += i + ';'
+        if self.Selectedrow_num == 0:
+            self.qCheckBox[0].setCheckState(0)
+        elif self.Selectedrow_num == self.row_num - 1:
+            self.qCheckBox[0].setCheckState(2)
+        else:
+            self.qCheckBox[0].setCheckState(1)
+        self.qLineEdit.setText(show0)
+        self.qLineEdit.setReadOnly(True)
 
-        self.setGeometry(200, 200, 570, 400)
-        self.show()
+    def All(self, zhuangtai):
+        if zhuangtai == 2:
+            for i in range(1, self.row_num):
+                self.qCheckBox[i].setChecked(True)
+        elif zhuangtai == 1:
+            if self.Selectedrow_num == 0:
+                self.qCheckBox[0].setCheckState(2)
+        elif zhuangtai == 0:
+            self.clear()
 
-    # insert,只是简单插入一个固定数据
-    def table_insert(self):
-        row = self.table.rowCount()
-        self.table.insertRow(row)
+    def clear(self):
+        for i in range(self.row_num):
+            self.qCheckBox[i].setChecked(False)
 
-        item_id = QTableWidgetItem("1")
-        item_id.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)  # 设置物件的状态为只可被选择（未设置可编辑）
+    def changeitemlist(self, itemlist):
 
-        item_name = QTableWidgetItem("door")  # 我们要求它可以修改，所以使用默认的状态即可
+        self.items = itemlist
+        self.items.insert(0, '全部')
+        self.row_num = len(self.items)
 
-        item_pos = QTableWidgetItem("(1,2)")
-        item_pos.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)  # 设置物件的状态为只可被选择
-
-        self.table.setItem(row, 0, item_id)
-        self.table.setItem(row, 1, item_name)
-        self.table.setItem(row, 2, item_pos)
-        # 以下可以加入保存数据到数据的操作
-
-    # update
-    def table_update(self):
-        row_select = self.table.selectedItems()
-        if len(row_select) == 0:
-            return
-        id = row_select[0].text()
-        new_name = row_select[1].text()
-        print("id: {}, save_name: {}".format(id, new_name))
-        # 以下可以加入保存数据到数据的操作
-        '''
-        eg. update {table} set name = "new_name" where id = "id"
-        '''
-
-    # delete
-    def table_delete(self):
-        row_select = self.table.selectedItems()
-        if len(row_select) == 0:
-            return
-        id = row_select[0].text()
-        print("id: {}".format(id))
-
-        row = row_select[0].row()
-        self.table.removeRow(row)
-        # 以下可以加入保存数据到数据的操作
-        '''
-        eg. delete from {table} where id = "id"
-        '''
+        self.Selectedrow_num = 0
+        self.qCheckBox = []
+        self.qLineEdit = QLineEdit()
+        self.qLineEdit.setReadOnly(True)
+        self.qListWidget = QListWidget()
+        self.addQCheckBox(0)
+        self.qCheckBox[0].stateChanged.connect(self.All)
+        for i in range(1, self.row_num):
+            self.addQCheckBox(i)
+            self.qCheckBox[i].stateChanged.connect(self.show0)
+        self.setModel(self.qListWidget.model())
+        self.setView(self.qListWidget)
+        self.setLineEdit(self.qLineEdit)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    main_window = testWindow()
+    mainWindow = ComboCheckBox(['装置ID', '传感器ID', "采样时间", '装置电源电压', "信号强度",'装置ID', '传感器ID', "采样时间", '装置电源电压', "信号强度"])
+    def solt11(x):
+        print(x)
+    mainWindow.signa.connect(solt11)
+    mainWindow.show()
     sys.exit(app.exec_())
+
