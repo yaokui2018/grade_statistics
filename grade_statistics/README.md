@@ -21,14 +21,14 @@
 
 ### 界面截图
 
-![image-20210524194905556](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524194905556.png)
+![image-20210524194905556](img/image-20210524194905556.png)
 
-![image-20210524201350390](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524201350390.png)
+![image-20210524201350390](img/image-20210524201350390.png)
 
-![image-20210524201415433](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524201415433.png)
+![image-20210524201415433](img/image-20210524201415433.png)
 
-![image-20210524201433236](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524201433236.png)
+![image-20210524201433236](img/image-20210524201433236.png)
 
-![image-20210524201549058](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524201549058.png)
+![image-20210524201549058](img/image-20210524201549058.png)
 
-![image-20210524201606449](E:\win10_software\pycharm\工作空间\grade_statistics\img\image-20210524201606449.png)[](http://www.yaokui.ltd/)
+![image-20210524201606449](img/image-20210524201606449.png)
