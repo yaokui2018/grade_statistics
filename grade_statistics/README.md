@@ -1,11 +1,13 @@
 # 使用pyqt5开发的小学生成绩管理系统
-
-![visitor badge](https://visitor-badge.vercel.app/p/yaokui2018.grade_statistics)
+![GitHub last commit](https://img.shields.io/github/last-commit/yaokui2018/grade_statistics)
+![GitHub language count](https://img.shields.io/github/languages/count/yaokui2018/grade_statistics)
+![GitHub top language](https://img.shields.io/github/languages/top/yaokui2018/grade_statistics)
+![visitor badge](https://thread-erratic-podium.glitch.me/badge?page_id=yaokui2018.grade_statistics)
 
 
 > 《面向对象技术》课程设计作业
 
-个人网站：[http://www.yaokui.ltd/](http://www.yaokui.ltd/)
+个人网站：[http://www.bhshare.cn/](http://www.bhshare.cn/)
 
 ### 数据库
 
